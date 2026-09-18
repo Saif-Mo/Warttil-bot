@@ -43,7 +43,7 @@ LOOKBACK_MINUTES = 30
 def normalize_date(raw: str) -> str:
     """يحاول يفهم صيغ متعددة للتاريخ ويرجعها كـ YYYY-MM-DD."""
     raw = raw.strip()
-    for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+    for fmt in ("%Y/%m/%d", "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
         try:
             return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
         except ValueError:
@@ -53,11 +53,36 @@ def normalize_date(raw: str) -> str:
 
 def normalize_time(raw: str) -> str:
     raw = raw.strip()
-    for fmt in ("%H:%M", "%H.%M"):
-        try:
-            return datetime.strptime(raw, fmt).strftime("%H:%M")
-        except ValueError:
-            continue
+
+    # الصيغة العربية: "10:22:00 ص" أو "10:22 م"
+    is_pm = None
+    if "ص" in raw:
+        is_pm = False
+        raw = raw.replace("ص", "").strip()
+    elif "م" in raw:
+        is_pm = True
+        raw = raw.replace("م", "").strip()
+
+    if is_pm is not None:
+        # فيه علامة صباح/مساء -> ده وقت بنظام 12 ساعة
+        for fmt in ("%I:%M:%S", "%I:%M"):
+            try:
+                dt = datetime.strptime(raw, fmt)
+                hour = dt.hour % 12
+                if is_pm:
+                    hour += 12
+                return f"{hour:02d}:{dt.minute:02d}"
+            except ValueError:
+                continue
+    else:
+        # من غير علامة -> نظام 24 ساعة (الصيغة القديمة)
+        for fmt in ("%H:%M:%S", "%H:%M", "%H.%M"):
+            try:
+                dt = datetime.strptime(raw, fmt)
+                return f"{dt.hour:02d}:{dt.minute:02d}"
+            except ValueError:
+                continue
+
     raise ValueError(f"مش قادر أفهم صيغة الوقت: {raw!r}")
 
 
