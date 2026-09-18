@@ -1,0 +1,44 @@
+name: Publish Wartil scheduled content
+
+on:
+  schedule:
+    # كل 15 دقيقة (بتوقيت UTC — التحويل للتوقيت المحلي بيحصل جوه الكود نفسه)
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}  # يسمح بتشغيل يدوي من تبويب Actions لو حبيت تختبر
+
+permissions:
+  contents: write  # مطلوبة عشان نقدر نحدّث posted_log.json ونرفعه
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run publisher
+        env:
+          SHEET_CSV_URL: ${{ secrets.SHEET_CSV_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: python post_scheduled.py
+
+      - name: Commit updated posted log (if changed)
+        run: |
+          git config user.name "wartil-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if ! git diff --quiet -- posted_log.json; then
+            git add posted_log.json
+            git commit -m "تحديث سجل المنشور تلقائيًا"
+            git push
+          else
+            echo "مفيش تغيير في سجل المنشور."
+          fi
