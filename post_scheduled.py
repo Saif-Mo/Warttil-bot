@@ -87,13 +87,23 @@ def normalize_time(raw: str) -> str:
 
 
 def load_rows():
+
+    def load_rows():
     resp = requests.get(SHEET_CSV_URL, timeout=30)
     resp.raise_for_status()
     resp.encoding = "utf-8"
     reader = csv.DictReader(io.StringIO(resp.text))
-    return [row for row in reader]
 
+    rows = [row for row in reader]
+    print("=== DEBUG SHEET ===")
+    print(f"عدد الصفوف: {len(rows)}")
+    for row in rows:
+        print(row)
+    print("=== END DEBUG ===")
 
+    return rows
+
+    
 def load_posted_log():
     if not os.path.exists(LOG_PATH):
         return set()
